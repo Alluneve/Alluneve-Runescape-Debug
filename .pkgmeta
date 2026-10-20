@@ -1,5 +1,4 @@
 ignore:
-  - tests
   - README.md
   - INSTALLATION.md
   - AI-DECLARATION.md

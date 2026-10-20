@@ -1,0 +1,8 @@
+{
+  "name": "Alluneve-Debug Test Plugin",
+  "version": "0.0.1",
+  "contactEmailAddress": "example@example.com",
+  "optionalDependencies": {
+    "AlluneveDebug": "Alluneve-Runescape-Debug"
+  }
+}

@@ -1,23 +1,19 @@
-local _, private = ...
-local RollingLog = {}
-private.RollingLog = RollingLog
+local rollingLog = {}
 
 local PAGE_SIZE = 256
 
--- Plain Old Lua Objects --
 ---@class RollingLog
 ---@field Append fun(logObject: LogObject)
 ---@field PeekOldest fun(): LogObject?
 ---@field RemoveOldest fun(): LogObject?
 ---@field EvictOldestPage fun()
----@field GetOldestPageMaxTimeStamp fun(): number?
+---@field GetOldestPageMaxTick fun(): integer?
 ---@field Clear fun()
 ---@field Iterator fun(): fun(): LogObject?
 ---@field GetAproximateByteSize fun(): number
 
-
 ---@enum Severity
-RollingLog.Severity = {
+rollingLog.Severity = {
     DEBUG = "DEBUG",
     INFO = "INFO",
     WARN = "WARN",
@@ -26,18 +22,17 @@ RollingLog.Severity = {
 
 ---@class LogObject
 ---@field severity Severity
----@field timestamp number
+---@field tick integer
 ---@field message string
 
----@overload fun(severity: Severity, message: string): LogObject
 ---@param severity Severity
 ---@param message string
----@param timestamp number
+---@param tick integer
 ---@return LogObject
-function RollingLog.CreateLogObject(severity, message, timestamp)
+function rollingLog.CreateLogObject(severity, message, tick)
     return {
         severity = severity,
-        timestamp = timestamp or GetTimePreciseSec(),
+        tick = tick,
         message = message
     }
 end
@@ -46,7 +41,7 @@ end
 ---@field entries table<integer, LogObject>
 ---@field firstIndex integer
 ---@field count integer
----@field maxTimeStamp number
+---@field maxTick integer
 ---@field next RollingPage?
 ---@field aproxByteSize number
 
@@ -56,7 +51,7 @@ local function CreatePage()
         entries = {},
         firstIndex = 1,
         count = 0,
-        maxTimeStamp = 0,
+        maxTick = 0,
         next = nil,
         aproxByteSize = 0
     }
@@ -66,7 +61,7 @@ end
 ---@field firstPage RollingPage?
 ---@field lastPage RollingPage?
 ---@field aproxByteSize number
----@field iteratorVersion number
+---@field iteratorVersion integer
 
 ---@return RollingState
 local function CreateRollingState()
@@ -78,15 +73,15 @@ local function CreateRollingState()
     }
 end
 
----@param LogObject LogObject
-local function getEntrySize(LogObject)
-    return #LogObject.message + #LogObject.severity + 128
+---@param logObject LogObject
+---@return number
+local function getEntrySize(logObject)
+    return #logObject.message + #logObject.severity + 128
 end
 
--- Private Methods --
 ---@param state RollingState
----@param LogObject LogObject
-local function Append(state, LogObject)
+---@param logObject LogObject
+local function Append(state, logObject)
     ---@type RollingPage?
     local page = state.lastPage
     if not page then
@@ -103,9 +98,10 @@ local function Append(state, LogObject)
     end
 
     page.count = page.count + 1
-    page.maxTimeStamp = math.max(page.maxTimeStamp, LogObject.timestamp)
-    page.entries[page.count] = LogObject
-    local objSize = getEntrySize(LogObject)
+    page.maxTick = math.max(page.maxTick, logObject.tick)
+    page.entries[page.count] = logObject
+
+    local objSize = getEntrySize(logObject)
     state.aproxByteSize = state.aproxByteSize + objSize
     page.aproxByteSize = page.aproxByteSize + objSize
 end
@@ -146,12 +142,11 @@ local function RemoveOldest(state)
         state.aproxByteSize = state.aproxByteSize - objSize
     end
 
-    state.iteratorVersion  = state.iteratorVersion + 1
+    state.iteratorVersion = state.iteratorVersion + 1
     return oldest
 end
 
 ---@param state RollingState
----@return nil
 local function EvictOldestPage(state)
     local page = state.firstPage
     if not page then
@@ -165,16 +160,16 @@ local function EvictOldestPage(state)
         state.lastPage = nil
         state.aproxByteSize = 0
     end
-    state.iteratorVersion = state.iteratorVersion +1
+    state.iteratorVersion = state.iteratorVersion + 1
 end
 
 ---@param state RollingState
----@return number?
-local function GetOldestPageMaxTimeStamp(state)
+---@return integer?
+local function GetOldestPageMaxTick(state)
     if not state.firstPage then
         return nil
     end
-    return state.firstPage.maxTimeStamp
+    return state.firstPage.maxTick
 end
 
 ---@param state RollingState
@@ -185,7 +180,7 @@ end
 
 ---@param state RollingState
 ---@return fun(): LogObject?
----Do not use Iterator and Page Eviction Concurrently
+---Do not use Iterator and Page Eviction concurrently.
 local function Iterator(state)
     local page = state.firstPage
 
@@ -195,8 +190,9 @@ local function Iterator(state)
         end
     end
 
-    local index = page.firstIndex or 1
+    local index = page.firstIndex
     local version = state.iteratorVersion
+
     return function()
         if version ~= state.iteratorVersion then
             return nil
@@ -222,15 +218,14 @@ local function Iterator(state)
     end
 end
 
--- API interface --
 ---@return RollingLog
-function RollingLog.CreateRollingLog()
+function rollingLog.CreateRollingLog()
     ---@type RollingState
     local state = CreateRollingState()
     return {
-        ---@param LogObject LogObject
-        Append = function(LogObject)
-            Append(state, LogObject)
+        ---@param logObject LogObject
+        Append = function(logObject)
+            Append(state, logObject)
         end,
         ---@return LogObject?
         PeekOldest = function()
@@ -240,15 +235,13 @@ function RollingLog.CreateRollingLog()
         RemoveOldest = function()
             return RemoveOldest(state)
         end,
-        ---@return nil
         EvictOldestPage = function()
             EvictOldestPage(state)
         end,
-        ---@return number?
-        GetOldestPageMaxTimeStamp = function()
-            return GetOldestPageMaxTimeStamp(state)
+        ---@return integer?
+        GetOldestPageMaxTick = function()
+            return GetOldestPageMaxTick(state)
         end,
-        ---@return nil
         Clear = function()
             state.iteratorVersion = state.iteratorVersion + 1
             state = CreateRollingState()
@@ -263,3 +256,5 @@ function RollingLog.CreateRollingLog()
         end
     }
 end
+
+return rollingLog
