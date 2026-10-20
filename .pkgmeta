@@ -3,3 +3,4 @@ ignore:
   - INSTALLATION.md
   - AI-DECLARATION.md
   - Assets
+  - tests
