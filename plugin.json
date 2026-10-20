@@ -1,0 +1,11 @@
+{
+  "name": "Alluneve Debug",
+  "version": "0.0.1",
+  "contactEmailAddress": "alluneve@alluneve.be",
+  "requiredDependencies": {
+    "prettyui": 6398181
+  },
+  "optionalDependencies": [],
+  "requiredPermissions": [],
+  "optionalPermissions": []
+}

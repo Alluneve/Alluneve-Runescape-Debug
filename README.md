@@ -1,6 +1,6 @@
 # Alluneve-Debug
 
-**Alluneve-Debug** is a standalone debugging framework for World of Warcraft Retail addon developers. It provides a shared API for structured, severity-based logging without having to build and maintain your own logging infrastructure or flood the chat with diagnostic messages.
+**Alluneve-Debug** is a standalone debugging framework for Runescape addon developers. It provides a shared API for structured, severity-based logging without having to build and maintain your own logging infrastructure or flood the chat with diagnostic messages.
 
 Diagnostic messages are retained in independent, per-addon rolling histories. When a Lua error can be attributed to a registered addon, Alluneve-Debug automatically submits a flight-recorder report to **!BugGrabber**, containing events from **60 seconds before and 10 seconds after the error** by default. This gives developers a timeline of what their addon was doing around the failure, rather than just a stack trace.
 
